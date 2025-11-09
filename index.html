@@ -41,10 +41,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    header p {
-      margin-top: 8px;
-      color: var(--muted);
-    }
+    header p { margin-top: 8px; color: var(--muted); }
     .controls {
       display: flex;
       gap: 12px;
@@ -115,6 +112,20 @@
       font-size: .8rem;
       color: var(--muted);
     }
+    #pages {
+      margin-top: 32px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #pages button {
+      padding: 8px 14px;
+      min-width: 40px;
+    }
+    #pages button.active {
+      border: 2px solid var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -135,10 +146,13 @@
   </div>
 
   <div id="news"></div>
+  <div id="pages"></div>
 
   <script>
     const corsProxy = "https://api.allorigins.win/get?url=";
     let allNews = [];
+    let currentPage = 1;
+    const itemsPerPage = 8;
 
     function hoursAgo(h) {
       const date = new Date();
@@ -171,19 +185,29 @@
     }
 
     function filterNews() {
-      const term = document.getElementById("searchInput").value.toLowerCase();
-      const filtered = allNews.filter(n => n.title.toLowerCase().includes(term));
-      renderNews(filtered);
+      currentPage = 1;
+      renderNews(allNews);
     }
 
     function renderNews(list) {
+      const term = document.getElementById("searchInput").value.toLowerCase();
+      let filtered = list;
+      if (term) filtered = list.filter(n => n.title.toLowerCase().includes(term));
+
+      const total = filtered.length;
+      const pages = Math.ceil(total / itemsPerPage);
+      const start = (currentPage - 1) * itemsPerPage;
+      const pageItems = filtered.slice(start, start + itemsPerPage);
+
       const newsDiv = document.getElementById("news");
       newsDiv.innerHTML = "";
-      if (list.length === 0) {
+      if (pageItems.length === 0) {
         newsDiv.innerHTML = "Nenhuma notícia encontrada.";
+        document.getElementById("pages").innerHTML = "";
         return;
       }
-      list.forEach(n => {
+
+      pageItems.forEach(n => {
         const div = document.createElement("div");
         div.className = "news";
         div.innerHTML = `
@@ -192,6 +216,20 @@
         `;
         newsDiv.appendChild(div);
       });
+
+      renderPagination(pages);
+    }
+
+    function renderPagination(pages) {
+      const pagesDiv = document.getElementById("pages");
+      pagesDiv.innerHTML = "";
+      for (let i = 1; i <= pages; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = i === currentPage ? "active" : "";
+        btn.onclick = () => { currentPage = i; renderNews(allNews); };
+        pagesDiv.appendChild(btn);
+      }
     }
 
     async function loadNews() {
@@ -199,6 +237,7 @@
       const cutoff = new Date(hoursAgo(hours));
       const newsDiv = document.getElementById("news");
       newsDiv.innerHTML = "Carregando...";
+      document.getElementById("pages").innerHTML = "";
 
       const sources = [
         {
@@ -234,7 +273,8 @@
       }
 
       allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-      filterNews();
+      currentPage = 1;
+      renderNews(allNews);
     }
 
     loadNews();
